@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emotion detection through text</title>
+    <style>
+        /* Basic styling for the body and page layout */
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: #f4f7f6; 
+            margin: 0; 
+            padding: 0; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+        }
+
+        /* Styling for the chatbox container */
+        .chatbox { 
+            width: 100%; 
+            max-width: 600px; 
+            background-color: white; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+            border-radius: 10px; 
+            padding: 20px; 
+        }
+
+        /* Heading style */
+        h2 {
+            text-align: center; 
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        /* Styling for the chat display area */
+        #chat { 
+            border: 1px solid #ddd; 
+            border-radius: 10px; 
+            padding: 15px; 
+            height: 300px; 
+            overflow-y: auto; 
+            background-color: #fafafa;
+            margin-bottom: 20px;
+        }
+
+        /* Style for each message */
+        .message { 
+            margin: 10px 0; 
+            display: inline-block; 
+            clear: both;
+        }
+
+        /* Styling for bot messages */
+        .bot-message { 
+            background-color: #eef2f7; 
+            color: #333; 
+            border-radius: 15px; 
+            padding: 10px 15px; 
+            max-width: 70%; 
+            animation: fadeIn 0.5s ease; 
+        }
+
+        /* Styling for user messages */
+        .user-message { 
+            background-color: #007bff; 
+            color: white; 
+            border-radius: 15px; 
+            padding: 10px 15px; 
+            max-width: 70%; 
+            float: right; 
+            animation: fadeIn 0.5s ease;
+        }
+
+        /* Result display area for emotion output */
+        .result { 
+            font-weight: bold; 
+            text-align: center; 
+            margin-top: 20px; 
+            color: #007bff; 
+            font-size: 1.2em; 
+        }
+
+        /* Input field styling */
+        input[type="text"] {
+            width: 80%; 
+            padding: 10px; 
+            border: 1px solid #ccc; 
+            border-radius: 5px; 
+            font-size: 16px;
+            margin-right: 10px;
+        }
+
+        /* Button styling */
+        button {
+            padding: 10px 20px; 
+            background-color: #007bff; 
+            border: none; 
+            color: white; 
+            border-radius: 5px; 
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        /* Hover effect for button */
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        /* Animation for message fade-in */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Chatbox container -->
+<div class="chatbox">
+    <h2>Emotion detection through text</h2>
+    <!-- Chat display area -->
+    <div id="chat">
+        <!-- Initial bot message asking how the user is feeling -->
+        <div class="message bot-message">How are you feeling today?</div>
+    </div>
+    <!-- Input field for user to type their response -->
+    <input type="text" id="userInput" placeholder="Type your response..." />
+    <!-- Button to send the user's message -->
+    <button onclick="sendMessage()">Send</button>
+
+    <!-- Result area to show the final emotion analysis -->
+    <div class="result" id="result"></div>
+</div>
+
+<script>
+// Predefined list of questions the bot will ask
+const questions = [
+    "How are you feeling today?",
+    "Have you experienced anything joyful recently?",
+    "Is your work or study going well?",
+    "Do you feel any stress or anxiety?",
+    "What do you usually do to relax?"
+];
+
+let chatIndex = 0; // To keep track of the current question
+let emotionScores = []; // Array to store emotion scores for each response
+
+// Function to send a message and get a response from the bot
+function sendMessage() {
+    // Get user input from the text box
+    const userInput = document.getElementById('userInput').value;
+    const chatDiv = document.getElementById('chat');
+
+    // Display the user's message in the chat
+    chatDiv.innerHTML += `<div class="message user-message">${userInput}</div>`;
+    // Clear the input field
+    document.getElementById('userInput').value = '';
+
+    // Scroll to the bottom of the chat for the newest messages
+    chatDiv.scrollTop = chatDiv.scrollHeight;
+
+    // Send the user's message to the backend for emotion analysis
+    fetch('/analyze', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ text: userInput, question_index: chatIndex })
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Store the emotion scores for each response
+        emotionScores.push(data.emotion_scores);
+
+        chatIndex += 1; // Move to the next question
+
+        // Check if there are more questions to ask
+        if (chatIndex < questions.length) {
+            // Display the next bot message with a new question
+            chatDiv.innerHTML += `<div class="message bot-message">${questions[chatIndex]}</div>`;
+            chatDiv.scrollTop = chatDiv.scrollHeight; 
+        } else {
+            // If all questions are asked, send the emotion scores to the backend for final analysis
+            fetch('/finalize', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ scores: emotionScores })
+            })
+            .then(response => response.json())
+            .then(finalData => {
+                // Display the final emotion and confidence result
+                document.getElementById('result').innerText = 
+                    `Final Emotion: ${finalData.emotion}, Confidence: ${finalData.confidence}`;
+            });
+        }
+    });
+}
+</script>
+
+</body>
+</html>
+

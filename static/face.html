@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Metadata for the webpage -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Face Emotion Recognition</title>
+    <style>
+        /* Basic styles for body layout and text */
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f7f6;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+
+        /* Styles for the video container and video element */
+        #video-container {
+            position: relative;
+            width: 640px;
+            height: 480px;
+            display: flex;
+        }
+
+        #video {
+            width: 100%;
+            height: 100%;
+            border: 2px solid #333;
+            border-radius: 10px;
+            margin-right: 20px;
+        }
+
+        /* Style for emotion information panel */
+        #info-panel {
+            font-size: 18px;
+        }
+
+        /* Style for the face detection box */
+        #face-box {
+            position: absolute;
+            border: 2px solid red;
+            display: none;
+            width: 0;
+            height: 0;
+        }
+
+        /* Style for the moving scan line within the face detection box */
+        #scan-line {
+            position: absolute;
+            width: 100%; 
+            height: 2px;
+            background-color: blue;
+            top: 0; 
+            transition: top 0.1s linear; 
+        }
+
+        /* Style for the button */
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            border: none;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        /* Hover effect for the button */
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        /* Styles for progress bar during analysis */
+        #progressBar {
+            width: 640px;
+            height: 20px;
+            background-color: #f4f4f4;
+            border: 1px solid #ccc;
+            margin-top: 10px;
+            position: relative;
+        }
+
+        #progress {
+            height: 100%;
+            background-color: #007bff;
+            width: 0%;
+            position: absolute;
+        }
+
+        /* Style for final result display */
+        #final-result {
+            margin-top: 20px;
+            font-size: 20px;
+            font-weight: bold;
+            color: #007bff;
+        }
+    </style>
+</head>
+<body>
+    <!-- Title of the application -->
+    <h1>Emotion detection through facial expression</h1>
+
+    <!-- Container for video display and emotion information -->
+    <div id="video-container">
+        <!-- Video stream display -->
+        <video id="video" autoplay></video>
+
+        <!-- Placeholder for face detection bounding box -->
+        <div id="face-box">
+            <!-- Moving scan line inside the bounding box -->
+            <div id="scan-line"></div>  
+        </div>
+
+        <!-- Panel to display detected emotion and confidence -->
+        <div id="info-panel">
+            <h3>Emotion Information</h3>
+            <p>Current Emotion: <span id="emotion-display">None</span></p>
+            <p>Confidence: <span id="confidence-display">0%</span></p>
+        </div>
+    </div>
+
+    <!-- Button to start analysis -->
+    <button id="captureBtn">Capture and Start Analysis</button>
+
+    <!-- Progress bar to show analysis status -->
+    <div id="progressBar">
+        <div id="progress"></div>
+    </div>
+
+    <!-- Final results display -->
+    <div id="final-result">Final Emotion: <span id="final-emotion">N/A</span>, Confidence: <span id="final-confidence">0%</span></div>
+
+    <script>
+        // Get references to elements in the DOM
+        const video = document.getElementById('video');
+        const emotionDisplay = document.getElementById('emotion-display');
+        const confidenceDisplay = document.getElementById('confidence-display');
+        const faceBox = document.getElementById('face-box');
+        const scanLineElement = document.getElementById('scan-line');
+        const progressBar = document.getElementById('progress');
+        const captureBtn = document.getElementById('captureBtn');
+        const finalEmotionDisplay = document.getElementById('final-emotion');
+        const finalConfidenceDisplay = document.getElementById('final-confidence');
+        
+        // Variables to manage analysis state
+        let intervalId; // ID for the analysis interval
+        let timeLeft = 30; // Time remaining for analysis
+        let finalEmotion = "N/A"; // Final detected emotion
+        let finalConfidence = 0; // Confidence score for the emotion
+        let scanLinePosition = 0; // Position of the scan line
+        let scanLineDirection = 1; // Direction of scan line movement
+        const scanLineSpeed = 4; // Speed of scan line movement
+
+        // Start video stream from webcam
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream; // Attach webcam stream to video element
+            })
+            .catch(err => {
+                console.error("Error accessing webcam: " + err);
+            });
+
+        // Add event listener to capture button
+        captureBtn.addEventListener('click', function() {
+            timeLeft = 30; // Reset analysis time
+            progressBar.style.width = '0%'; // Reset progress bar
+            intervalId = setInterval(captureAndAnalyze, 1000); // Start analysis every second
+        });
+
+        // Function to move the scan line in the bounding box
+        function moveScanLine() {
+            if (faceBox.style.display === 'block') {
+                const faceBoxHeight = faceBox.offsetHeight;
+
+                // Update scan line position and direction
+                scanLinePosition += scanLineDirection * scanLineSpeed;
+
+                if (scanLinePosition >= faceBoxHeight) {
+                    scanLineDirection = -1; // Change direction to move upward
+                } 
+                if (scanLinePosition <= 0) {
+                    scanLineDirection = 1; // Change direction to move downward
+                }
+
+                // Update scan line position
+                scanLineElement.style.top = `${scanLinePosition}px`;
+            }
+        }
+
+        // Update scan line position periodically
+        setInterval(moveScanLine, 30);
+
+        // Function to capture an image and analyze it for emotions
+        function captureAndAnalyze() {
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            // Capture the current video frame
+            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Convert the captured frame to base64 format
+            const dataURL = canvas.toDataURL('image/jpeg');
+
+            // Send the captured image to the server for analysis
+            fetch('/upload', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ image: dataURL }) // Send base64 image data
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    console.error("Error: " + data.error);
+                } else {
+                    // Update emotion and confidence display with server response
+                    const { emotion, confidence, faceBoxCoords } = data;
+                    emotionDisplay.textContent = emotion;
+                    confidenceDisplay.textContent = (parseFloat(confidence)).toFixed(2) + '%';
+                    
+                    finalEmotion = emotion;
+                    finalConfidence = (parseFloat(confidence)).toFixed(2) + '%';
+
+                    // Display face detection box if coordinates are available
+                    if (faceBoxCoords) {
+                        faceBox.style.display = 'block';
+                        faceBox.style.left = `${faceBoxCoords.x}px`;
+                        faceBox.style.top = `${faceBoxCoords.y}px`;
+                        faceBox.style.width = `${faceBoxCoords.width}px`;
+                        faceBox.style.height = `${faceBoxCoords.height}px`;
+                    } else {
+                        faceBox.style.display = 'none';
+                    }
+                }
+            })
+            .catch(err => console.error("Error sending image to server: " + err));
+
+            // Update progress bar
+            timeLeft -= 1;
+            progressBar.style.width = `${(30 - timeLeft) / 30 * 100}%`;
+
+            // Stop analysis when time runs out
+            if (timeLeft <= 0) {
+                clearInterval(intervalId);
+                
+                // Display final emotion and confidence
+                finalEmotionDisplay.textContent = finalEmotion;
+                finalConfidenceDisplay.textContent = finalConfidence;
+            }
+        }
+    </script>
+
+</body>
+</html>
+
+

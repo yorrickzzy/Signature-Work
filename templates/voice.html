@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emotion Detection through voice</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f0f4f8;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            color: #007BFF;
+        }
+
+        button {
+            padding: 15px 30px;
+            font-size: 1.2em;
+            color: white;
+            background-color: #007BFF;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.3s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+            transform: scale(1.05);
+        }
+
+        #timer {
+            font-size: 1.5em;
+            margin-top: 20px;
+        }
+
+        #message {
+            margin-top: 10px;
+            font-size: 1.5em;
+            color: #333;
+        }
+
+        #volumeMeter {
+            width: 300px;
+            height: 25px;
+            background-color: #e0e0e0;
+            border-radius: 5px;
+            position: relative;
+            margin-top: 20px;
+            overflow: hidden;
+        }
+
+        #volumeLevel {
+            height: 100%;
+            width: 0;
+            background-color: #28a745;
+            transition: width 0.1s ease-in-out;
+        }
+
+        #randomImage {
+            margin-top: 20px;
+            max-width: 100%;
+            height: auto;
+            display: none;
+        }
+
+        #description {
+            margin-top: 10px;
+            font-size: 1.2em;
+            color: #007BFF;
+            display: none;
+        }
+    </style>
+    <script>
+        let audioContext;
+        let analyser;
+        let microphone;
+        let javascriptNode;
+        // Array of random images to display during the recording
+        const images = [
+            "https://picsum.photos/300/200?random=1",
+            "https://picsum.photos/300/200?random=2",
+            "https://picsum.photos/300/200?random=3",
+            "https://picsum.photos/300/200?random=4",
+            "https://picsum.photos/300/200?random=5"
+        ];
+
+        // Function to start the voice recording process
+        function startRecording() {
+            const timerElement = document.getElementById("timer");
+            const messageElement = document.getElementById("message");
+            const volumeLevelElement = document.getElementById("volumeLevel");
+            const randomImage = document.getElementById("randomImage");
+            const description = document.getElementById("description");
+            const button = document.querySelector("button");
+
+            // Display a random image from the images array
+            const randomIndex = Math.floor(Math.random() * images.length);
+            randomImage.src = images[randomIndex];
+            randomImage.style.display = "block";
+            description.style.display = "block"; 
+
+            // Check if the browser supports getUserMedia (microphone access)
+            if (!navigator.mediaDevices.getUserMedia) {
+                alert("Your browser does not support audio recording.");
+                return;
+            }
+
+            // Access the microphone and start recording
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    // Set up audio context and processing
+                    audioContext = new AudioContext();
+                    analyser = audioContext.createAnalyser();
+                    microphone = audioContext.createMediaStreamSource(stream);
+                    javascriptNode = audioContext.createScriptProcessor(2048, 1, 1);
+
+                    analyser.smoothingTimeConstant = 0.8;
+                    analyser.fftSize = 1024;
+
+                    // Connect the microphone input to the analyser and then to the audio context
+                    microphone.connect(analyser);
+                    analyser.connect(javascriptNode);
+                    javascriptNode.connect(audioContext.destination);
+
+                    // Calculate and update the volume level on the UI
+                    javascriptNode.onaudioprocess = function () {
+                        const array = new Uint8Array(analyser.frequencyBinCount);
+                        analyser.getByteFrequencyData(array);
+                        const values = array.reduce((a, b) => a + b, 0);
+                        const average = values / array.length;
+
+                        volumeLevelElement.style.width = Math.min(average * 2, 300) + "px";
+                    };
+
+                    let duration = 10;
+                    button.disabled = true;  // Disable button while recording
+                    const countdown = setInterval(() => {
+                        if (duration > 0) {
+                            timerElement.innerHTML = "Time left: " + duration + " seconds";
+                            duration--;
+                        } else {
+                            // After 10 seconds, stop recording and send data to the backend
+                            clearInterval(countdown);
+                            timerElement.innerHTML = "Recording finished.";
+                            messageElement.innerHTML = "Analyzing the recording...";
+
+                            // Send POST request to the server to process the recording
+                            fetch("/record", {
+                                    method: "POST"
+                                })
+                                .then(response => response.json())
+                                .then(data => {
+                                    messageElement.innerHTML = `Predicted Emotion: ${data.emotion}, Confidence: ${data.confidence}`;
+                                    button.disabled = false;  // Re-enable the button
+                                })
+                                .catch(error => {
+                                    messageElement.innerHTML = "Error: " + error;
+                                    button.disabled = false;  // Re-enable the button
+                                });
+                        }
+                    }, 1000);
+                })
+                .catch(error => {
+                    alert("Error accessing the microphone: " + error);
+                });
+        }
+    </script>
+</head>
+
+<body>
+    <h1>Emotion Detection through Voice</h1>
+    <button onclick="startRecording()">Start Recording</button>
+    <p id="timer">Ready to record.</p>
+    <p id="message"></p>
+
+    <div id="volumeMeter">
+        <div id="volumeLevel"></div>
+    </div>
+
+    <img id="randomImage" src="" alt="Random Image">
+    
+    <p id="description">Please describe what is this picture about?</p>
+</body>
+
+</html>
+

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movie Recommendation List</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            padding: 40px; 
+            background-color: #f5f5f5;
+        }
+        h1 { 
+            font-size: 3em; 
+            margin-bottom: 20px; 
+            color: #333;
+        }
+        p { color: #555; }
+        .bold { font-weight: bold; color: #007BFF; }
+
+        .navbar {
+            background-color: #007BFF;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-around;
+        }
+        .navbar a {
+            color: white;
+            text-decoration: none;
+            font-size: 1.2em;
+            padding: 10px 20px;
+        }
+        .navbar a:hover {
+            background-color: #0056b3;
+            border-radius: 5px;
+        }
+        .navbar a.active {
+            font-weight: bold;
+            text-decoration: underline;
+        }
+
+        .genre-selector {
+            margin-bottom: 20px;
+        }
+        select {
+            font-size: 1.1em;
+            padding: 5px;
+            border-radius: 5px;
+            border: 1px solid #007BFF;
+        }
+
+        .movie-section { 
+            display: flex; 
+            align-items: center; 
+            margin-bottom: 30px; 
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .movie-section img { 
+            width: 120px; 
+            height: auto; 
+            margin-right: 20px; 
+            border-radius: 10px; 
+        }
+        .movie-info h3 { 
+            margin: 5px 0; 
+            font-size: 1.5em; 
+            color: #333;
+        }
+        .movie-info p { 
+            margin: 2px 0; 
+            color: #666;
+        }
+    </style>
+    <script>
+        function changeGenre(value) {
+            window.location.href = value;
+        }
+    </script>
+</head>
+<body>
+
+    <div class="navbar">
+        <a href="comedy.html" class="active">Comedy</a>
+        <a href="plot.html">Plot</a>
+        <a href="animation.html">Animation</a>
+    </div>
+
+    <div class="genre-selector">
+        <label for="genre-select">Choose a genre:</label>
+        <select id="genre-select" onchange="changeGenre(this.value)">
+            <option value="comedy.html" selected>Comedy</option>
+            <option value="plot.html">Plot</option>
+            <option value="animation.html">Animation</option>
+        </select>
+    </div>
+
+    <h1>Movie Recommendation List</h1>
+    <p>Your recommended movie type: <span class="bold">Comedy</span></p>
+    
+    <div class="movie-section">
+        <p class="bold">Your best choice:</p>
+        <img src="picture1.png" alt="3 Idiots">
+        <div class="movie-info">
+            <h3>三傻大闹宝莱坞 3 Idiots (2009)</h3>
+            <p>Original Movie Rate: 9.2</p>
+            <p>Sentiment Analysis Score: 9.9</p>
+            <p>Final Movie Rate: 9.55</p>
+        </div>
+    </div>
+
+    <div class="movie-section">
+        <p class="bold">Your second best choice:</p>
+        <img src="picture2.png" alt="La vita è bella">
+        <div class="movie-info">
+            <h3>美丽人生 La vita è bella (1997)</h3>
+            <p>Original Movie Rate: 9.5</p>
+            <p>Sentiment Analysis Score: 9.4</p>
+            <p>Final Movie Rate: 9.45</p>
+        </div>
+    </div>
+
+    <div class="movie-section">
+        <p class="bold">Your third best choice:</p>
+        <img src="picture3.png" alt="Zootopia">
+        <div class="movie-info">
+            <h3>疯狂动物城 Zootopia (2016)</h3>
+            <p>Original Movie Rate: 9.2</p>
+            <p>Sentiment Analysis Score: 9.5</p>
+            <p>Final Movie Rate: 9.35</p>
+        </div>
+    </div>
+
+</body>
+</html>
+
+
